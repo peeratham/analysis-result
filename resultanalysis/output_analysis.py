@@ -7,7 +7,7 @@ import pandas as pd
 import seaborn as sns
 from pymongo import MongoClient
 
-
+output_dir = 'C:/Users/Peeratham/Dropbox/research_papers/smell_analysis/';
 
 def score(mastery_report):
     total = 0
@@ -39,32 +39,75 @@ mastery_scores_df = pd.DataFrame(mastery_scores)
 # Smell Result
 # all available analysis: reports_df.columns.values
 smell_names = [ u'BroadCastWorkaround', u'Too Broad Variable Scope',
-                u'Too Long Script', u'Uncommunicative Naming', u'Unreachable Code', u'Duplicate Code',
-                u'scriptCount']
+                u'Too Long Script', u'Uncommunicative Naming', u'Unreachable Code', u'Duplicate Code']
+extra_attributes = [u'scriptCount']
 
 freq = lambda item: len(item) if isinstance(item,list) else item
-smell_freq = {smell:[freq(smell_record) for smell_record in reports_df[smell]] for smell in smell_names}
+smell_freq = {smell:[freq(smell_record) for smell_record in reports_df[smell]] for smell in smell_names+extra_attributes}
 smell_freq_reports_df = pd.DataFrame(smell_freq,reports_df.index.values)
 
 # join smell report with project specific mastery score
 smell_report_with_mastery = smell_freq_reports_df.join(mastery_scores_df)
 # next combine with metadata
-meta_reports_df = pd.concat([metadata_df, smell_freq_reports_df],axis=1)
+full_report_df = pd.concat([metadata_df, smell_freq_reports_df],axis=1)
 # drop all with NaN, those that is failed to be parsed /analyzed
-meta_reports_df = meta_reports_df.dropna(axis='index')
-# drop trivial project where script < 1 : some project is only a drawing
-meta_reports_df = meta_reports_df.dropna(axis='index')
+full_report_df = full_report_df.dropna(axis='index')
 # drop where scriptCount = 0
-meta_reports_df = meta_reports_df[meta_reports_df['scriptCount']>0]
+full_report_df = full_report_df[full_report_df['scriptCount']>0]
 # sorting by scriptCount
-meta_reports_df = meta_reports_df.sort_values(['scriptCount'], ascending=[0])
+# meta_reports_df = meta_reports_df.sort_values(['scriptCount'], ascending=[0])
 
 # histogram of smells found for each mastery group
 # Parallel Coordinates for three different skill level
 
 
+smell_occurrences = full_report_df[smell_names]
+overall_smell_df = pd.DataFrame(smell_occurrences)
+
+def write_latex(latex_str, file_name):
+    fo = open(output_dir+file_name+'.tex', 'w')
+    fo.seek(0)
+    fo.write(latex_str)
+    fo.truncate()
+    fo.close()
+
+###### table1 smell instance founds across all N projects (taken into account dropped records) #############
+aggregate_smell_df = pd.DataFrame(smell_occurrences.sum(axis='index'), columns=['occurrences'])
+print(aggregate_smell_df)
+write_latex(aggregate_smell_df.to_latex(), 'table1');
+
+# ax = aggregate_smell_df.plot(kind='bar', figsize=(8,12), color=current_palette, rot=0)
+# for p in ax.patches:
+#     ax.annotate(str(int(p.get_height())), (p.get_x()+p.get_width()/2., p.get_height(), ),ha='center', va='center', xytext=(0, 10), textcoords='offset points')
+# plt.show()
 
 
+###### table 2 percent of projects inflicted with each kind of smell #######################################
+smell_exist_or_not_df = smell_occurrences.applymap(lambda count: 1 if count > 0 else 0)
+aggregate_smelly_projects = smell_exist_or_not_df.sum(axis=0)
+smell_exist_or_not_df_percent = aggregate_smelly_projects/len(smell_exist_or_not_df)
+smell_exist_or_not_df_percent = smell_exist_or_not_df_percent.to_frame("Percentage of projects")
+print(smell_exist_or_not_df_percent)
+
+write_latex(smell_exist_or_not_df_percent.to_latex(), 'table2')
+# aggregate_smelly_projects.plot(kind='bar', figsize=(8,12), color=current_palette, rot=0)
+# plt.show()
+
+###### table 3 percent of projects contains 1 type of smell, 2 ,3 ...
+distict_smells_per_project = smell_occurrences.apply(lambda record: sum([1 if record[smell]>0 else 0 for smell in smell_names]),axis='columns')
+distict_smells_per_project = distict_smells_per_project.value_counts().sort_index()
+distict_smells_per_project /= distict_smells_per_project.sum()  #proportion
+distict_smells_per_project.plot(kind='bar',figsize=(8,12), color=current_palette)
+print(distict_smells_per_project)
+distict_smells_per_project.show()
+
+
+
+
+
+
+
+# ------------------------------------
 print("===Average Smell found===")
 print(smell_freq_reports_df.mean(axis=0))
 
@@ -74,33 +117,3 @@ print(smell_freq_reports_df.max(axis=0))
 print(smell_freq_reports_df.describe())
 
 print(metadata_df.describe())
-
-only_smells_and_id_df = meta_reports_df[smell_names]
-overall_smell_df = pd.DataFrame(only_smells_and_id_df)
-
-
-aggregate_smell_df = pd.DataFrame(only_smells_and_id_df.sum(axis='index'), columns=['frequency'])
-print(aggregate_smell_df.columns.values)
-print(aggregate_smell_df)
-ax = aggregate_smell_df.plot(kind='bar', figsize=(8,12), color=current_palette, rot=0)
-for p in ax.patches:
-    ax.annotate(str(int(p.get_height())), (p.get_x()+p.get_width()/2., p.get_height(), ),ha='center', va='center', xytext=(0, 10), textcoords='offset points')
-plt.show()
-
-
-# frequency of distinct code smell exists in each project
-def unique_count(row):
-    unique = [1 if row[col]>0 else 0 for col in smell_names]
-    return sum(unique)
-
-unique_smell_cnt = only_smells_and_id_df.apply(unique_count,axis='columns')
-unique_smell_cnt = unique_smell_cnt.value_counts().sort_index()
-unique_smell_cnt /= unique_smell_cnt.sum()  #proportion
-unique_smell_cnt.plot(kind='bar',figsize=(8,12), color=current_palette)
-unique_smell_cnt.show()
-
-
-
-
-
-
