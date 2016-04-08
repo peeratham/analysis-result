@@ -39,7 +39,9 @@ mastery_scores_df = pd.DataFrame(mastery_scores)
 # Smell Result
 # all available analysis: reports_df.columns.values
 smell_names = [ u'BroadCastWorkaround', u'Too Broad Variable Scope',
-                u'Too Long Script', u'Uncommunicative Naming', u'Unreachable Code', u'Duplicate Code']
+                u'Too Long Script', u'Uncommunicative Naming', u'Unreachable Code', u'Duplicate Code',
+                u'Unnecessary Broadcast'
+                ]
 extra_attributes = [u'scriptCount']
 
 freq = lambda item: len(item) if isinstance(item,list) else item
@@ -63,6 +65,7 @@ full_report_df = full_report_df[full_report_df['scriptCount']>0]
 
 smell_occurrences = full_report_df[smell_names]
 overall_smell_df = pd.DataFrame(smell_occurrences)
+# print(overall_smell_df)
 
 def write_latex(latex_str, file_name):
     fo = open(output_dir+file_name+'.tex', 'w')
@@ -99,21 +102,21 @@ distict_smells_per_project = distict_smells_per_project.value_counts().sort_inde
 distict_smells_per_project /= distict_smells_per_project.sum()  #proportion
 distict_smells_per_project.plot(kind='bar',figsize=(8,12), color=current_palette)
 print(distict_smells_per_project)
-distict_smells_per_project.show()
 
 
 
 
 
 
-
-# ------------------------------------
-print("===Average Smell found===")
-print(smell_freq_reports_df.mean(axis=0))
-
-print("===Max Smell found===")
-print(smell_freq_reports_df.max(axis=0))
-
-print(smell_freq_reports_df.describe())
-
-print(metadata_df.describe())
+#
+#
+# # ------------------------------------
+# print("===Average Smell found===")
+# print(smell_freq_reports_df.mean(axis=0))
+#
+# print("===Max Smell found===")
+# print(smell_freq_reports_df.max(axis=0))
+#
+# print(smell_freq_reports_df.describe())
+#
+# print(metadata_df.describe())
